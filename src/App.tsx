@@ -392,24 +392,31 @@ function AppContent() {
                 </div>
               </div>
             </motion.div>
-          ) : (
+          ) : !adminSession ? (
             <motion.div
-              key="admin-tab"
+              key="admin-login-tab"
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.3 }}
-              id="admin-view"
+              id="admin-login-view"
             >
-              {adminSession ? (
-                <AdminDashboard 
-                  adminEmail={adminSession.email}
-                  isDemo={adminSession.isDemo}
-                  onLogout={handleLogout}
-                />
-              ) : (
-                <AdminLogin onLoginSuccess={handleLoginSuccess} />
-              )}
+              <AdminLogin onLoginSuccess={handleLoginSuccess} />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="admin-dashboard-tab"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.3 }}
+              id="admin-dashboard-view"
+            >
+              <AdminDashboard 
+                adminEmail={adminSession.email}
+                isDemo={adminSession.isDemo}
+                onLogout={handleLogout}
+              />
             </motion.div>
           )}
         </AnimatePresence>

@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured, mockDb } from '../lib/supabase';
 import { Registration, DashboardStats } from '../types';
+import { toast } from 'sonner';
 
 export const registrationService = {
   async getRegistrations(): Promise<Registration[]> {
@@ -11,6 +12,7 @@ export const registrationService = {
 
       if (error) {
         console.error('Error fetching registrations from Supabase, falling back to mock:', error);
+        toast.error(`Erreur de chargement de la base Supabase: ${error.message}. Utilisation des données locales.`);
         return mockDb.getRegistrations();
       }
       return data || [];
@@ -31,10 +33,11 @@ export const registrationService = {
     };
 
     if (isSupabaseConfigured && supabase) {
-      // In Supabase, let the database generate id and created_at if set, but we pass these as default fallback
       const { data, error } = await supabase
         .from('registrations')
         .insert([{
+          id: newReg.id,
+          created_at: newReg.created_at,
           fullname: newReg.fullname,
           phone: newReg.phone,
           email: newReg.email || null,
@@ -55,16 +58,19 @@ export const registrationService = {
 
       if (error) {
         console.error('Error writing to Supabase, writing to mock instead:', error);
+        toast.error(`Erreur d'inscription Supabase: ${error.message}. Sauvegarde locale effectuée.`);
         const regs = mockDb.getRegistrations();
         regs.unshift(newReg);
         mockDb.saveRegistrations(regs);
         return newReg;
       }
+      toast.success("Inscription enregistrée en ligne avec succès !");
       return data;
     } else {
       const regs = mockDb.getRegistrations();
       regs.unshift(newReg);
       mockDb.saveRegistrations(regs);
+      toast.success("Inscription enregistrée localement (Supabase non configuré).");
       return newReg;
     }
   },
@@ -80,8 +86,10 @@ export const registrationService = {
 
       if (error) {
         console.error('Error updating in Supabase, updating mock instead:', error);
+        toast.error(`Erreur de mise à jour Supabase: ${error.message}. Modification locale effectuée.`);
         return this.updateMockRegistration(id, updates);
       }
+      toast.success("Données synchronisées en ligne.");
       return data;
     } else {
       return this.updateMockRegistration(id, updates);
@@ -124,8 +132,10 @@ export const registrationService = {
 
       if (error) {
         console.error('Error deleting from Supabase, deleting from mock instead:', error);
+        toast.error(`Erreur de suppression Supabase: ${error.message}. Suppression locale effectuée.`);
         return this.deleteMockRegistration(id);
       }
+      toast.success("Inscription supprimée en ligne.");
       return true;
     } else {
       return this.deleteMockRegistration(id);
