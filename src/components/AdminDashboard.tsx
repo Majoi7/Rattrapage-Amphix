@@ -637,15 +637,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminEmail, isDe
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-transparent">
-                <AnimatePresence mode="popLayout">
-                  {filteredRegistrations.map((reg) => (
-                    <motion.tr
-                      key={reg.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="hover:bg-slate-50/50 transition-all group"
-                    >
+                {filteredRegistrations.map((reg) => (
+                  <tr
+                    key={reg.id}
+                    className="hover:bg-slate-50/50 transition-all group"
+                  >
                       {/* 1. Date & Student */}
                       <td className="px-5 py-4.5 space-y-1 max-w-[220px]">
                         <span className="text-[10px] text-slate-400 font-mono block">
@@ -790,9 +786,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminEmail, isDe
                           </button>
                         </div>
                       </td>
-                    </motion.tr>
-                  ))}
-                </AnimatePresence>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
