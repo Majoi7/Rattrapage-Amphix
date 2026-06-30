@@ -1,0 +1,6 @@
+{
+  "name": "Amphix Rattrapage",
+  "description": "Plateforme d'inscription aux séances de rattrapage Amphix Pulse et Amphix Private.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
