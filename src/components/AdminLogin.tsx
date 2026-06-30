@@ -98,14 +98,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
           ) : (
             <>
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
-              <div>
-                <span className="font-semibold block text-amber-900">Mode Démo Activé (Pas de clés)</span>
-                Connectez-vous pour voir le tableau de bord :
-                <div className="font-mono bg-amber-100/50 border border-amber-200 px-2.5 py-1.5 rounded-lg mt-1 text-amber-900 select-all">
-                  Email : admin@amphix.ci<br />
-                  Mot de passe : admin
-                </div>
-              </div>
+             
             </>
           )}
         </div>
