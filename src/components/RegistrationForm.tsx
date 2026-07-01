@@ -13,7 +13,8 @@ const AVAILABLE_SUBJECTS = [
   "SQL",
   "Algèbre relationnelle",
   "Python",
-  "Recherche opérationnelle"
+  "Recherche opérationnelle",
+  "Théorie des graphes"
 ];
 
 interface RegistrationFormProps {
@@ -71,26 +72,76 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
   const selectedPack = watch('pack');
   const selectedSessions = watch('selected_sessions');
 
-  const [selectedSubjectsList, setSelectedSubjectsList] = useState<string[]>([]);
+  const [subjectAllocations, setSubjectAllocations] = useState<Record<string, number>>({});
+
+  const totalAllocated = (Object.values(subjectAllocations) as number[]).reduce((sum, count) => sum + count, 0);
+  const remainingSessions = selectedSessions - totalAllocated;
+
+  const handleToggleSubject = (subject: string) => {
+    if (subjectAllocations[subject]) {
+      const { [subject]: _, ...rest } = subjectAllocations;
+      setSubjectAllocations(rest);
+    } else {
+      if (remainingSessions > 0) {
+        setSubjectAllocations(prev => ({
+          ...prev,
+          [subject]: 1
+        }));
+      } else {
+        toast.warning(`Vous avez déjà alloué toutes vos ${selectedSessions} séances. Veuillez d'abord libérer des séances.`);
+      }
+    }
+  };
+
+  const handleIncrementSubject = (subject: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (remainingSessions > 0) {
+      setSubjectAllocations(prev => ({
+        ...prev,
+        [subject]: (prev[subject] || 0) + 1
+      }));
+    } else {
+      toast.warning("Toutes vos séances ont été distribuées. Augmentez le nombre total de séances ou réduisez une autre matière.");
+    }
+  };
+
+  const handleDecrementSubject = (subject: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const currentCount = subjectAllocations[subject] || 0;
+    if (currentCount > 1) {
+      setSubjectAllocations(prev => ({
+        ...prev,
+        [subject]: currentCount - 1
+      }));
+    } else if (currentCount === 1) {
+      const { [subject]: _, ...rest } = subjectAllocations;
+      setSubjectAllocations(rest);
+    }
+  };
 
   // Synchronize with react-hook-form
   useEffect(() => {
-    setValue('subjects', selectedSubjectsList.join(', '), { shouldValidate: true });
-  }, [selectedSubjectsList, setValue]);
+    const entries = Object.entries(subjectAllocations) as [string, number][];
+    const subjectsString = entries
+      .filter(([_, count]) => count > 0)
+      .map(([name, count]) => `${name} (${count} séance${count > 1 ? 's' : ''})`)
+      .join(', ');
+    setValue('subjects', subjectsString, { shouldValidate: true });
+  }, [subjectAllocations, setValue]);
 
-  // If selectedSessions changes, ensure our selected subjects don't exceed it
+  // If selectedSessions changes, ensure our allocated sessions don't exceed it
   useEffect(() => {
-    if (selectedSubjectsList.length > selectedSessions) {
-      setSelectedSubjectsList(selectedSubjectsList.slice(0, selectedSessions));
+    if (totalAllocated > selectedSessions) {
+      setSubjectAllocations({});
     }
-  }, [selectedSessions]);
+  }, [selectedSessions, totalAllocated]);
 
   // Set the pack inside the form when initialPack changes or modal is opened
   useEffect(() => {
     if (isOpen && initialPack) {
       setValue('pack', initialPack);
       setValue('selected_sessions', initialPack === 'Private' ? 3 : 5);
-      setSelectedSubjectsList([]);
+      setSubjectAllocations({});
       setStep('form');
     }
   }, [isOpen, initialPack, setValue]);
@@ -113,8 +164,12 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
   const handleNextStep = (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedSubjectsList.length !== selectedSessions) {
-      toast.error(`Veuillez sélectionner exactement ${selectedSessions} matière(s) pour vos ${selectedSessions} séance(s).`);
+    if (remainingSessions !== 0) {
+      if (remainingSessions > 0) {
+        toast.error(`Veuillez distribuer vos ${remainingSessions} séance(s) restante(s) parmi vos matières.`);
+      } else {
+        toast.error(`Vous avez alloué trop de séances. Veuillez en libérer ${Math.abs(remainingSessions)}.`);
+      }
       return;
     }
     if (isValid) {
@@ -340,57 +395,79 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                   <div className="space-y-3">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                       <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-                        <BookOpen className="h-3.5 w-3.5 text-[#007a5e]" /> Choix des matières *
+                        <BookOpen className="h-3.5 w-3.5 text-[#007a5e]" /> Choix des matières & séances *
                       </label>
                       <span className="text-xs font-semibold text-[#007a5e] bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full">
-                        Sélection : {selectedSubjectsList.length} / {selectedSessions} matière{selectedSessions > 1 ? 's' : ''}
+                        Répartition : {totalAllocated} / {selectedSessions} séance{selectedSessions > 1 ? 's' : ''}
                       </span>
                     </div>
                     
                     <p className="text-xs text-slate-500 italic">
-                      Chaque séance correspond à une matière. Veuillez sélectionner exactement <strong>{selectedSessions}</strong> matière{selectedSessions > 1 ? 's' : ''} à préparer :
+                      Sélectionnez vos matières puis distribuez vos <strong>{selectedSessions}</strong> séances parmi elles (vous pouvez allouer plusieurs séances à la même matière) :
                     </p>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5" id="subjects-selector-grid">
                       {AVAILABLE_SUBJECTS.map((subject) => {
-                        const isSelected = selectedSubjectsList.includes(subject);
+                        const count = subjectAllocations[subject] || 0;
+                        const isSelected = count > 0;
                         return (
-                          <button
+                          <div
                             key={subject}
-                            type="button"
-                            onClick={() => {
-                              if (isSelected) {
-                                setSelectedSubjectsList(prev => prev.filter(s => s !== subject));
-                              } else {
-                                if (selectedSubjectsList.length < selectedSessions) {
-                                  setSelectedSubjectsList(prev => [...prev, subject]);
-                                } else {
-                                  toast.warning(`Vous avez déjà sélectionné le maximum de ${selectedSessions} matières pour vos ${selectedSessions} séances.`);
-                                }
-                              }
-                            }}
-                            className={`p-3 rounded-xl border text-left text-xs transition-all flex items-start gap-2.5 cursor-pointer h-full ${
+                            onClick={() => handleToggleSubject(subject)}
+                            className={`p-3 rounded-xl border text-left text-xs transition-all flex items-center justify-between gap-2 cursor-pointer h-full min-h-[58px] ${
                               isSelected
                                 ? 'bg-[#007a5e]/5 border-[#007a5e] text-[#007a5e] font-semibold ring-2 ring-[#007a5e]/10'
                                 : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                             }`}
                           >
-                            <span className={`w-4 h-4 rounded mt-0.5 shrink-0 flex items-center justify-center border transition-all ${
-                              isSelected ? 'bg-[#007a5e] border-[#007a5e] text-white' : 'border-slate-300 bg-white'
-                            }`}>
-                              {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
-                            </span>
-                            <span className="leading-snug">{subject}</span>
-                          </button>
+                            <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                              <span className={`w-4 h-4 rounded mt-0.5 shrink-0 flex items-center justify-center border transition-all ${
+                                isSelected ? 'bg-[#007a5e] border-[#007a5e] text-white' : 'border-slate-300 bg-white'
+                              }`}>
+                                {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                              </span>
+                              <span className="leading-snug break-words pr-2">{subject}</span>
+                            </div>
+
+                            {isSelected && (
+                              <div className="flex items-center gap-1.5 shrink-0 bg-white border border-[#007a5e]/20 rounded-lg p-1" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleDecrementSubject(subject, e)}
+                                  className="w-5 h-5 flex items-center justify-center rounded bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs border border-slate-200 cursor-pointer"
+                                >
+                                  -
+                                </button>
+                                <span className="font-mono text-xs font-bold text-slate-800 min-w-[12px] text-center">
+                                  {count}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleIncrementSubject(subject, e)}
+                                  className="w-5 h-5 flex items-center justify-center rounded bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs border border-slate-200 cursor-pointer"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         );
                       })}
                     </div>
                     {errors.subjects && (
                       <p className="text-xs text-red-500 mt-1">{errors.subjects.message}</p>
                     )}
-                    {selectedSubjectsList.length !== selectedSessions && (
+                    {remainingSessions > 0 ? (
                       <p className="text-xs text-amber-600 font-medium flex items-center gap-1.5 mt-1">
-                        ⚠️ Veuillez sélectionner encore {selectedSessions - selectedSubjectsList.length} matière{selectedSessions - selectedSubjectsList.length > 1 ? 's' : ''}.
+                        ⚠️ Veuillez distribuer vos <strong>{remainingSessions}</strong> séance{remainingSessions > 1 ? 's' : ''} restante{remainingSessions > 1 ? 's' : ''}.
+                      </p>
+                    ) : remainingSessions < 0 ? (
+                      <p className="text-xs text-red-500 font-medium flex items-center gap-1.5 mt-1">
+                        ⚠️ Vous avez alloué {Math.abs(remainingSessions)} séance{Math.abs(remainingSessions) > 1 ? 's' : ''} de trop. Veuillez en retirer.
+                      </p>
+                    ) : (
+                      <p className="text-xs text-[#007a5e] font-medium flex items-center gap-1.5 mt-1">
+                        ✅ Toutes vos {selectedSessions} séances ont été parfaitement réparties !
                       </p>
                     )}
                   </div>

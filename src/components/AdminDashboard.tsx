@@ -100,8 +100,86 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminEmail, isDe
     }
 
     // 5. Subject Filter
-    const matchesSubject = filters.subject === 'all' || 
-      (reg.subjects && reg.subjects.toLowerCase().includes(filters.subject.toLowerCase()));
+    let matchesSubject = true;
+    if (filters.subject !== 'all') {
+      if (!reg.subjects) {
+        matchesSubject = false;
+      } else {
+        const normalize = (s: string) => {
+          return s
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, " ")
+            .trim();
+        };
+
+        const normRegSubjects = normalize(reg.subjects);
+        const normFilter = normalize(filters.subject);
+
+        // Special case: Équations différentielles, suites et séries numériques
+        if (
+          normFilter.includes("equation") || 
+          normFilter.includes("diff") || 
+          normFilter.includes("suite") || 
+          normFilter.includes("serie")
+        ) {
+          matchesSubject = 
+            normRegSubjects.includes("equation") || 
+            normRegSubjects.includes("diff") || 
+            normRegSubjects.includes("suite") || 
+            normRegSubjects.includes("serie") ||
+            normRegSubjects.includes("eq");
+        } 
+        // Special case: Administration Windows / Linux
+        else if (
+          normFilter.includes("windows") || 
+          normFilter.includes("linux") || 
+          normFilter.includes("admin")
+        ) {
+          matchesSubject = 
+            normRegSubjects.includes("windows") || 
+            normRegSubjects.includes("linux") || 
+            normRegSubjects.includes("admin") ||
+            normRegSubjects.includes("syst");
+        }
+        // Special case: Algèbre relationnelle
+        else if (
+          normFilter.includes("algebre") || 
+          normFilter.includes("relationnelle") || 
+          normFilter.includes("relationnel")
+        ) {
+          matchesSubject = 
+            normRegSubjects.includes("algebre") || 
+            normRegSubjects.includes("relationnel") || 
+            normRegSubjects.includes("relationnelle");
+        }
+        // Special case: Recherche opérationnelle
+        else if (
+          normFilter.includes("recherche") || 
+          normFilter.includes("operationnelle")
+        ) {
+          matchesSubject = 
+            normRegSubjects.includes("recherche") || 
+            normRegSubjects.includes("operationnelle") || 
+            normRegSubjects.includes("ro");
+        }
+        // Special case: Théorie des graphes
+        else if (
+          normFilter.includes("graphe") || 
+          normFilter.includes("theorie")
+        ) {
+          matchesSubject = 
+            normRegSubjects.includes("graphe") || 
+            normRegSubjects.includes("theorie") ||
+            normRegSubjects.includes("tg");
+        }
+        // Default substring matching (normalized)
+        else {
+          matchesSubject = normRegSubjects.includes(normFilter) || normFilter.includes(normRegSubjects);
+        }
+      }
+    }
 
     return matchesSearch && matchesPack && matchesStatus && matchesDate && matchesSubject;
   });
@@ -587,6 +665,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminEmail, isDe
               <option value="Algèbre relationnelle">Algèbre relationnelle</option>
               <option value="Python">Python</option>
               <option value="Recherche opérationnelle">Recherche opérationnelle</option>
+              <option value="Théorie des graphes">Théorie des graphes</option>
             </select>
           </div>
 
